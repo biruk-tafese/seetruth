@@ -1,52 +1,54 @@
 'use client';
 
-import { useState } from 'react';
-import { FiX, FiBriefcase, FiMessageSquare } from 'react-icons/fi';
+import { useState, useTransition } from 'react';
+import { FiX, FiBriefcase, FiMessageSquare, FiAlertCircle } from 'react-icons/fi';
 import AuthModal from '@/components/AuthModal';
 import { Inquiry } from '@/types';
+import { createInquiry } from '@/app/actions';
 
 interface AskQuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAsk: (inquiry: Inquiry) => void;
+  onSuccess: (inquiry: Inquiry) => void;
 }
 
-export default function AskQuestionModal({ isOpen, onClose, onAsk }: AskQuestionModalProps) {
+export default function AskQuestionModal({ isOpen, onClose, onSuccess }: AskQuestionModalProps) {
   const [companyName, setCompanyName] = useState('');
   const [question, setQuestion] = useState('');
   const [authorTitle, setAuthorTitle] = useState('Job Seeker');
   const [showAuth, setShowAuth] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   
-  // Check localStorage for anonymous question limit
   const hasAsked = typeof window !== 'undefined' && localStorage.getItem('seetruth_has_asked') === 'true';
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (hasAsked) {
       setShowAuth(true);
       return;
     }
 
-    const newInquiry: Inquiry = {
-      id: `inq-${Date.now()}`,
-      company_name: companyName.trim() || 'General',
-      question,
-      author_title: authorTitle,
-      replies_count: 0,
-      created_at: new Date().toISOString(),
-      replies: []
-    };
+    const formData = new FormData();
+    formData.append('company_name', companyName);
+    formData.append('question', question);
+    formData.append('author_title', authorTitle);
 
-    onAsk(newInquiry);
-    localStorage.setItem('seetruth_has_asked', 'true');
-    
-    // Reset form
-    setCompanyName('');
-    setQuestion('');
-    onClose();
+    startTransition(async () => {
+      const result = await createInquiry(formData);
+      if (result.error) {
+        setError(result.error);
+      } else if (result.success && result.data) {
+        localStorage.setItem('seetruth_has_asked', 'true');
+        onSuccess(result.data);
+        setCompanyName('');
+        setQuestion('');
+      }
+    });
   };
 
   return (
@@ -62,7 +64,14 @@ export default function AskQuestionModal({ isOpen, onClose, onAsk }: AskQuestion
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Get answers from verified insiders.</p>
           </div>
 
-          {hasAsked && (
+          {error && (
+            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs flex items-start gap-2">
+              <FiAlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {hasAsked && !error && (
             <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2">
               <span>You have already submitted an anonymous question. Please sign in to ask more.</span>
             </div>
@@ -114,13 +123,14 @@ export default function AskQuestionModal({ isOpen, onClose, onAsk }: AskQuestion
 
             <button
               type="submit"
+              disabled={isPending || hasAsked}
               className={`w-full py-2.5 text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-500/20 ${
                 hasAsked 
                   ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 cursor-not-allowed' 
                   : 'bg-blue-600 hover:bg-blue-700 text-white'
               }`}
             >
-              {hasAsked ? 'Sign In Required for Multiple Questions' : 'Post Question Anonymously'}
+              {isPending ? 'Posting...' : (hasAsked ? 'Sign In Required' : 'Post Question Anonymously')}
             </button>
           </form>
         </div>

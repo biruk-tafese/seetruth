@@ -60,3 +60,68 @@ export async function createCompany(formData: FormData) {
   // Redirect to the newly created company profile
   redirect(`/company/${data.slug}`);
 }
+
+
+export async function createInquiry(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const company_name = formData.get('company_name') as string;
+  const question = formData.get('question') as string;
+  const author_title = formData.get('author_title') as string || 'Anonymous User';
+
+  if (!question) return { error: 'Question is required.' };
+
+  const { data, error } = await supabase
+    .from('inquiries')
+    .insert({
+      company_name: company_name || 'General',
+      question,
+      author_title,
+      user_id: user?.id || null,
+      replies_count: 0,
+    })
+    .select()
+    .single();
+
+  if (error) return { error: error.message };
+  
+  revalidatePath('/');
+  return { success: true, data };
+}
+
+export async function addInquiryReply(inquiryId: string, content: string, authorTitle: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!content.trim()) return { error: 'Reply cannot be empty.' };
+
+  // 1. Insert the reply
+  const { data: reply, error: replyError } = await supabase
+    .from('inquiry_replies')
+    .insert({
+      inquiry_id: inquiryId,
+      content,
+      author_title: authorTitle || (user?.user_metadata?.full_name || 'Anonymous'),
+      user_id: user?.id || null,
+    })
+    .select()
+    .single();
+
+  if (replyError) return { error: replyError.message };
+
+  // 2. Increment the replies_count on the parent inquiry
+  await supabase
+    .from('inquiries')
+    .update({ replies_count: supabase.rpc('increment_replies_count', { row_id: inquiryId }) }) // Or just use a raw update if RPC isn't set up
+    // Simpler fallback for replies_count:
+    .eq('id', inquiryId)
+    .select('replies_count')
+    .single()
+    .then(({ data }) => {
+       if(data) supabase.from('inquiries').update({ replies_count: (data.replies_count || 0) + 1 }).eq('id', inquiryId);
+    });
+
+  revalidatePath('/');
+  return { success: true, data: reply };
+}
