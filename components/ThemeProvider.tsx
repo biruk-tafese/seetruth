@@ -16,52 +16,63 @@ const ThemeContext = React.createContext<ThemeContextType | undefined>(undefined
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = React.useState<Theme>('system');
   const [resolvedTheme, setResolvedTheme] = React.useState<'light' | 'dark'>('light');
-  const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    setMounted(true);
+    // Read from localStorage on client mount
     const savedTheme = localStorage.getItem('theme') as Theme | null;
     const initialTheme = savedTheme || 'system';
     setThemeState(initialTheme);
-    updateDOM(initialTheme);
-  }, []);
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem('theme', newTheme);
-    updateDOM(newTheme);
-  };
-
-  const updateDOM = (currentTheme: Theme) => {
+    
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
-
+    
     let actualTheme: 'light' | 'dark' = 'light';
-    if (currentTheme === 'system') {
+    if (initialTheme === 'system') {
       actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     } else {
-      actualTheme = currentTheme;
+      actualTheme = initialTheme;
     }
     
     root.classList.add(actualTheme);
     setResolvedTheme(actualTheme);
-  };
+  }, []);
 
-  // Listen for system theme changes
+  const setTheme = React.useCallback((newTheme: Theme) => {
+    setThemeState(newTheme);
+    localStorage.setItem('theme', newTheme);
+    
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    
+    let actualTheme: 'light' | 'dark' = 'light';
+    if (newTheme === 'system') {
+      actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } else {
+      actualTheme = newTheme;
+    }
+    
+    root.classList.add(actualTheme);
+    setResolvedTheme(actualTheme);
+  }, []);
+
+  // Listen for OS-level theme changes
   React.useEffect(() => {
     if (theme !== 'system') return;
     
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => updateDOM('system');
+    const handleChange = () => {
+      const root = window.document.documentElement;
+      root.classList.remove('light', 'dark');
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.classList.add(isDark ? 'dark' : 'light');
+      setResolvedTheme(isDark ? 'dark' : 'light');
+    };
     
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
 
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
+  // ALWAYS provide the context, even on initial server render
   return (
     <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
       {children}
@@ -78,7 +89,7 @@ export function useTheme() {
 }
 
 export function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
