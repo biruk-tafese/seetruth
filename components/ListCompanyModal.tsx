@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FiX, FiMapPin, FiGlobe, FiImage, FiBriefcase, FiAlertCircle, FiPlusCircle } from 'react-icons/fi';
 import { createCompany } from '@/app/actions';
 
@@ -12,8 +13,13 @@ interface ListCompanyModalProps {
 export default function ListCompanyModal({ isOpen, onClose }: ListCompanyModalProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -26,13 +32,13 @@ export default function ListCompanyModal({ isOpen, onClose }: ListCompanyModalPr
       if (result?.error) {
         setError(result.error);
       }
-      // If successful, the server action will automatically redirect
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+  // createPortal renders this directly into the <body> tag, bypassing all z-index/overflow issues
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
           <FiX className="w-5 h-5" />
         </button>
@@ -59,13 +65,7 @@ export default function ListCompanyModal({ isOpen, onClose }: ListCompanyModalPr
             <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Company Name *</label>
             <div className="relative">
               <FiBriefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input
-                type="text"
-                name="name"
-                placeholder="e.g. Safaricom Ethiopia"
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100"
-                required
-              />
+              <input type="text" name="name" placeholder="e.g. Safaricom Ethiopia" className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100" required />
             </div>
           </div>
 
@@ -73,13 +73,7 @@ export default function ListCompanyModal({ isOpen, onClose }: ListCompanyModalPr
             <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Location *</label>
             <div className="relative">
               <FiMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input
-                type="text"
-                name="location"
-                placeholder="e.g. Addis Ababa, Bole"
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100"
-                required
-              />
+              <input type="text" name="location" placeholder="e.g. Addis Ababa, Bole" className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100" required />
             </div>
           </div>
 
@@ -87,12 +81,7 @@ export default function ListCompanyModal({ isOpen, onClose }: ListCompanyModalPr
             <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Website Link (Optional)</label>
             <div className="relative">
               <FiGlobe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input
-                type="url"
-                name="website"
-                placeholder="https://www.company.com"
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100"
-              />
+              <input type="url" name="website" placeholder="https://www.company.com" className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100" />
             </div>
           </div>
 
@@ -100,33 +89,19 @@ export default function ListCompanyModal({ isOpen, onClose }: ListCompanyModalPr
             <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Logo Image URL (Optional)</label>
             <div className="relative">
               <FiImage className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input
-                type="url"
-                name="logo_url"
-                placeholder="https://images.unsplash.com/..."
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100"
-              />
+              <input type="url" name="logo_url" placeholder="https://images.unsplash.com/..." className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100" />
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
+            <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancel</button>
+            <button type="submit" disabled={isPending} className="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
               {isPending ? 'Creating...' : 'Create Company'}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

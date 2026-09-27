@@ -1,28 +1,20 @@
 import { createClient } from '@/lib/supabase/server';
-import { INITIAL_COMPANIES, INITIAL_REVIEWS, INITIAL_INQUIRIES } from '@/data/seedCompanies';
-import { Company, Review, Inquiry } from '@/types';
-import CompanyProfileClient from '@/components/CompanyProfileClient';
 import { notFound } from 'next/navigation';
+import CompanyProfileClient from '@/components/CompanyProfileClient';
 
 async function getCompanyData(slug: string) {
   const supabase = await createClient();
 
-  // 1. Fetch Company
+  // 1. Fetch Company strictly from DB
   const { data: company, error: companyError } = await supabase
     .from('companies')
     .select('*')
     .eq('slug', slug)
     .single();
 
-  // Fallback to seed data if not in DB yet
+  // If not found in DB, trigger 404 immediately
   if (companyError || !company) {
-    const seedCompany = INITIAL_COMPANIES.find(c => c.slug === slug);
-    if (!seedCompany) return null;
-    return {
-      company: seedCompany,
-      reviews: INITIAL_REVIEWS.filter(r => r.company_id === seedCompany.id),
-      inquiries: INITIAL_INQUIRIES.filter(i => i.company_name === seedCompany.name)
-    };
+    notFound();
   }
 
   // 2. Fetch Reviews (with nested comments)
@@ -49,10 +41,6 @@ async function getCompanyData(slug: string) {
 export default async function CompanyProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = await params;
   const data = await getCompanyData(resolvedParams.slug);
-
-  if (!data) {
-    notFound();
-  }
 
   return (
     <CompanyProfileClient 

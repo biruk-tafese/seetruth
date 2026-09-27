@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import { INITIAL_COMPANIES } from '@/data/seedCompanies';
 import { Company } from '@/types';
 import { FiSearch, FiMapPin, FiStar, FiCheckCircle } from 'react-icons/fi';
 import Link from 'next/link';
@@ -13,11 +12,10 @@ async function getCompanies(searchQuery?: string): Promise<Company[]> {
     query = query.or(`name.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`);
   }
   
-  const { data, error } = await query.limit(20);
+  const { data, error } = await query.limit(50); // Increased limit slightly
   
-  if (error || !data || data.length === 0) {
-    return INITIAL_COMPANIES;
-  }
+  // PURE DATABASE: Return empty array if error or no data
+  if (error || !data) return [];
   return data;
 }
 
@@ -28,7 +26,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
 
   return (
     <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-16 w-full">
-      
       {/* Hero Section */}
       <div className="text-center space-y-4 max-w-3xl mx-auto px-2">
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
@@ -44,23 +41,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
         <div className="flex-1 relative">
           <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
           <form action="/" method="GET">
-            <input
-              type="text"
-              name="q"
-              defaultValue={query}
-              placeholder="Search companies, business centers, or locations..."
-              className="w-full pl-11 pr-4 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100 transition-all"
-              autoComplete="off"
-            />
+            <input type="text" name="q" defaultValue={query} placeholder="Search companies, business centers, or locations..." className="w-full pl-11 pr-4 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100 transition-all" autoComplete="off" />
           </form>
         </div>
-        <select className="w-full sm:w-auto px-4 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100 transition-all cursor-pointer">
-          <option value="All">All Sectors</option>
-          <option value="Telecom & Tech">Telecom & Tech</option>
-          <option value="Banking & Finance">Banking & Finance</option>
-          <option value="Software & IT">Software & IT</option>
-          <option value="Hospitality & Tourism">Hospitality & Tourism</option>
-        </select>
       </div>
 
       {/* Companies Grid */}
@@ -70,53 +53,47 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ q
           <span className="text-sm text-zinc-500">{companies.length} entities listed</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {companies.map((company) => (
-            <Link
-              key={company.id}
-              href={`/company/${company.slug}`}
-              className="group block p-5 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-lg hover:shadow-blue-500/5 transition-all bg-white dark:bg-zinc-900"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xl group-hover:scale-105 transition-transform">
-                  {company.name.charAt(0)}
-                </div>
-                {company.verified && (
-                  <div className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 rounded-full border border-blue-100 dark:border-blue-900">
-                    <FiCheckCircle className="w-3.5 h-3.5" />
-                    Verified
+        {companies.length === 0 ? (
+          <div className="text-center py-16 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50">
+            <p className="text-zinc-500 dark:text-zinc-400 text-lg">No companies found in the database yet.</p>
+            <p className="text-sm text-zinc-400 mt-2">Use the "List Company" button in the header to add the first one!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {companies.map((company) => (
+              <Link key={company.id} href={`/company/${company.slug}`} className="group block p-5 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-lg hover:shadow-blue-500/5 transition-all bg-white dark:bg-zinc-900">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xl group-hover:scale-105 transition-transform">
+                    {company.name.charAt(0)}
                   </div>
-                )}
-              </div>
-
-              <h3 className="font-bold text-lg mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                {company.name}
-              </h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">{company.category}</p>
-              
-              <div className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-                <FiMapPin className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{company.location}</span>
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                <div className="flex items-center gap-1.5">
-                  <FiStar className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <span className="font-bold text-zinc-900 dark:text-zinc-100">{company.overall_rating}</span>
-                  <span className="text-xs text-zinc-400">({company.review_count})</span>
+                  {company.verified && (
+                    <div className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 rounded-full border border-blue-100 dark:border-blue-900">
+                      <FiCheckCircle className="w-3.5 h-3.5" /> Verified
+                    </div>
+                  )}
                 </div>
-                <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
-                  View Insights <span className="text-lg leading-none">→</span>
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
+                <h3 className="font-bold text-lg mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{company.name}</h3>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">{company.category}</p>
+                <div className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                  <FiMapPin className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">{company.location}</span>
+                </div>
+                <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-1.5">
+                    <FiStar className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    <span className="font-bold text-zinc-900 dark:text-zinc-100">{company.overall_rating}</span>
+                    <span className="text-xs text-zinc-400">({company.review_count})</span>
+                  </div>
+                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">View Insights <span className="text-lg leading-none">→</span></span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Interactive Inquiries Section */}
       <InquiryBoard />
-      
     </main>
   );
 }

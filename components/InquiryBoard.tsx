@@ -22,6 +22,7 @@ export default function InquiryBoard() {
   const supabase = createClient();
 
   // Fetch inquiries from database on mount
+// Inside the useEffect in components/InquiryBoard.tsx:
   useEffect(() => {
     const fetchInquiries = async () => {
       const { data, error } = await supabase
@@ -29,10 +30,11 @@ export default function InquiryBoard() {
         .select('*, inquiry_replies(*)')
         .order('created_at', { ascending: false });
 
+      // PURE DATABASE: Only set data if it exists. Otherwise, leave as empty array.
       if (data && data.length > 0) {
         setInquiries(data);
       } else {
-        setInquiries(INITIAL_INQUIRIES); // Fallback
+        setInquiries([]); 
       }
       setIsLoading(false);
     };
