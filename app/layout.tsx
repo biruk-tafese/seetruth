@@ -4,6 +4,7 @@ import Link from 'next/link';
 import './globals.css';
 import { ThemeProvider, ThemeToggle } from '@/components/ThemeProvider';
 import { FiShield, FiCoffee, FiExternalLink, FiGithub, FiMail } from 'react-icons/fi';
+import { Analytics } from "@vercel/analytics/next"
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
           </footer>
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
