@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ThemeToggle } from './ThemeProvider';
+import ListCompanyModal from './ListCompanyModal';
 import { 
-  FiShield, FiLogOut, FiMenu, FiX, FiUser, FiChevronDown, FiEye, FiEyeOff 
+  FiShield, FiLogOut, FiMenu, FiX, FiChevronDown, FiEye, FiEyeOff, FiPlusCircle 
 } from 'react-icons/fi';
 import type { User } from '@supabase/supabase-js';
 
@@ -15,11 +16,11 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isListModalOpen, setIsListModalOpen] = useState(false); // New state for modal
   
   const supabase = createClient();
   const router = useRouter();
 
-  // Fetch user and listen to auth changes
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -36,7 +37,6 @@ export default function Header() {
       }
     });
 
-    // Load anonymous preference
     const savedPref = localStorage.getItem('seetruth_anonymous_pref');
     if (savedPref === 'true') setIsAnonymous(true);
 
@@ -82,6 +82,15 @@ export default function Header() {
             Inquiries
           </Link>
           
+          {/* List Company Button (Desktop) */}
+          <button 
+            onClick={() => setIsListModalOpen(true)}
+            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors flex items-center gap-1.5"
+          >
+            <FiPlusCircle className="w-4 h-4" />
+            List Company
+          </button>
+          
           <ThemeToggle />
 
           {user ? (
@@ -104,7 +113,6 @@ export default function Header() {
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setIsProfileDropdownOpen(false)} />
                   <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 overflow-hidden">
-                    {/* User Info */}
                     <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
@@ -117,7 +125,6 @@ export default function Header() {
                       </div>
                     </div>
 
-                    {/* Anonymous Toggle */}
                     <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -126,21 +133,16 @@ export default function Header() {
                         </div>
                         <button 
                           onClick={toggleAnonymous}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 ${
-                            isAnonymous ? 'bg-blue-600' : 'bg-zinc-200 dark:bg-zinc-700'
-                          }`}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 ${isAnonymous ? 'bg-blue-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                         >
-                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            isAnonymous ? 'translate-x-6' : 'translate-x-1'
-                          }`} />
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isAnonymous ? 'translate-x-6' : 'translate-x-1'}`} />
                         </button>
                       </div>
                       <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-                        {isAnonymous ? 'Your name will be hidden on reviews.' : 'Your name will be visible on reviews.'}
+                        {isAnonymous ? 'Your name will be hidden on reviews.' : 'Your name will be visible.'}
                       </p>
                     </div>
 
-                    {/* Sign Out */}
                     <div className="p-2">
                       <button 
                         onClick={handleSignOut}
@@ -184,8 +186,8 @@ export default function Header() {
             {/* Mobile User Profile */}
             {user ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl">
-                  <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                  <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
                     {getInitials(fullName, email)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -195,20 +197,16 @@ export default function Header() {
                 </div>
 
                 {/* Mobile Anonymous Toggle */}
-                <div className="flex items-center justify-between px-3 py-2">
+                <div className="flex items-center justify-between px-3 py-2 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
                   <div className="flex items-center gap-2">
                     {isAnonymous ? <FiEyeOff className="w-5 h-5 text-blue-500" /> : <FiEye className="w-5 h-5 text-zinc-400" />}
                     <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Post Anonymously</span>
                   </div>
                   <button 
                     onClick={toggleAnonymous}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      isAnonymous ? 'bg-blue-600' : 'bg-zinc-200 dark:bg-zinc-700'
-                    }`}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isAnonymous ? 'bg-blue-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isAnonymous ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isAnonymous ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </div>
 
@@ -232,6 +230,16 @@ export default function Header() {
 
             {/* Mobile Nav Links */}
             <nav className="space-y-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+              <button 
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsListModalOpen(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-base font-medium text-blue-600 dark:text-blue-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-xl transition-colors text-left"
+              >
+                <FiPlusCircle className="w-5 h-5" />
+                List a Company
+              </button>
               <Link 
                 href="/#inquiries" 
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -243,6 +251,12 @@ export default function Header() {
           </div>
         </div>
       )}
+
+      {/* Render the List Company Modal */}
+      <ListCompanyModal 
+        isOpen={isListModalOpen} 
+        onClose={() => setIsListModalOpen(false)} 
+      />
     </header>
   );
 }
