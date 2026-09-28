@@ -1,41 +1,49 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import CompanyProfileClient from '@/components/CompanyProfileClient';
+import { Comment } from '@/types';
 
 async function getCompanyData(slug: string) {
   const supabase = await createClient();
 
-  // 1. Fetch Company strictly from DB
   const { data: company, error: companyError } = await supabase
-    .from('companies')
-    .select('*')
-    .eq('slug', slug)
-    .single();
+    .from('companies').select('*').eq('slug', slug).single();
 
-  if (companyError || !company) {
-    notFound();
-  }
+  if (companyError || !company) notFound();
 
-  // 2. Fetch Reviews (with nested comments)
   const { data: reviews } = await supabase
     .from('reviews')
     .select('*, comments(*)')
     .eq('company_id', company.id)
     .order('created_at', { ascending: false });
 
-  // 3. Fetch Inquiries (with nested replies)
-  // Using ilike for more flexible matching of the company name
   const { data: inquiries } = await supabase
     .from('inquiries')
     .select('*, inquiry_replies(*)')
     .ilike('company_name', `%${company.name}%`)
     .order('created_at', { ascending: false });
 
-  return {
-    company,
-    reviews: reviews || [],
-    inquiries: inquiries || []
-  };
+  // 🌳 Build Comment Tree (Nest replies under their parents)
+  const processedReviews = (reviews || []).map((rev: any) => {
+    const comments = rev.comments || [];
+    comments.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    
+    const map = new Map<string, any>();
+    const roots: any[] = [];
+    
+    comments.forEach((c: any) => { c.replies = []; map.set(c.id, c); });
+    comments.forEach((c: any) => {
+      if (c.parent_id && map.has(c.parent_id)) {
+        map.get(c.parent_id)!.replies.push(c);
+      } else {
+        roots.push(c);
+      }
+    });
+    
+    return { ...rev, comments: roots };
+  });
+
+  return { company, reviews: processedReviews, inquiries: inquiries || [] };
 }
 
 export default async function CompanyProfilePage({ params }: { params: Promise<{ slug: string }> }) {

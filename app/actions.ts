@@ -220,7 +220,8 @@ export async function searchCompanies(query: string) {
 }
 
 
-export async function submitComment(formData: FormData, reviewId: string) {
+// Update existing submitComment to accept parentId
+export async function submitComment(formData: FormData, reviewId: string, parentId?: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -233,18 +234,50 @@ export async function submitComment(formData: FormData, reviewId: string) {
     .from('comments')
     .insert({
       review_id: reviewId,
+      parent_id: parentId || null, // <-- Link to parent if it's a reply
       user_id: user?.id || null,
       author_title,
       content,
       upvotes: 0,
+      downvotes: 0,
     })
     .select()
     .single();
 
   if (error) return { error: error.message };
-
   revalidatePath(`/company/[slug]`, 'page');
   return { success: true, data: comment };
+}
+
+// Add this new action for liking/disliking comments
+export async function submitCommentVote(commentId: string, type: 'upvote' | 'downvote') {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'You must be signed in to vote.' };
+
+  const { data: comment, error } = await supabase
+    .from('comments')
+    .select('upvotes, downvotes')
+    .eq('id', commentId)
+    .single(); 
+
+  if (error || !comment) return { error: 'Comment not found.' };
+
+  let newUpvotes = comment.upvotes || 0;
+  let newDownvotes = comment.downvotes || 0;
+
+  if (type === 'upvote') newUpvotes += 1;
+  if (type === 'downvote') newDownvotes += 1;
+
+  const { error: updateError } = await supabase
+    .from('comments')
+    .update({ upvotes: newUpvotes, downvotes: newDownvotes })
+    .eq('id', commentId);
+
+  if (updateError) return { error: updateError.message };
+
+  revalidatePath(`/company/[slug]`, 'page');
+  return { success: true, upvotes: newUpvotes, downvotes: newDownvotes };
 }
 
 export async function submitVote(reviewId: string, type: 'upvote' | 'downvote') {
@@ -299,3 +332,4 @@ export async function submitVote(reviewId: string, type: 'upvote' | 'downvote') 
     downvotes: newDownvotes 
   };
 }
+

@@ -40,13 +40,15 @@ export interface Review {
 export interface Comment {
   id: string;
   review_id: string;
+  parent_id?: string | null;
   user_id?: string;
   author_title: string;
   content: string;
   upvotes: number;
+  downvotes: number;
   created_at: string;
+  replies?: Comment[]; 
 }
-
 export interface Inquiry {
   id: string;
   company_name: string;
