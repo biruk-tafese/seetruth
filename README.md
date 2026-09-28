@@ -174,14 +174,3 @@ Distributed under the MIT License. See `LICENSE` for more information.
 **Built with transparency, privacy, and clean code in mind.**
 ```
 
-### How to use this:
-1. Create a file named `README.md` in the root directory of your project.
-2. Copy and paste the entire block above into it.
-3. Commit and push to GitHub:
-   ```powershell
-   git add README.md
-   git commit -m "docs: add comprehensive README with full project documentation"
-   git push origin master
-   ```
-
-This README is clean, highly professional, strictly follows your no-emoji rule for a minimalist aesthetic, and perfectly documents every advanced feature (threaded comments, anti-spam voting, smart autocomplete, global auth state, and custom theming) we have implemented. It will make your GitHub repository look incredibly polished and ready for production or open-source collaboration.
