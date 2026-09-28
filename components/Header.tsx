@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ThemeToggle } from './ThemeProvider';
 import ListCompanyModal from './ListCompanyModal';
 import { 
-  FiLogOut, FiMenu, FiX, FiChevronDown, FiEye, FiEyeOff, FiPlusCircle, FiCheckCircle 
+  FiShield, FiLogOut, FiMenu, FiX, FiChevronDown, FiEye, FiEyeOff, FiPlusCircle, FiCheckCircle 
 } from 'react-icons/fi';
 import type { User } from '@supabase/supabase-js';
 
@@ -79,7 +79,6 @@ export default function Header() {
     <header className="sticky top-0 z-50 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
-        {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
           <img src="/seeTruth.png" alt="SeeTruth Logo" className="h-8 w-auto object-contain" />
           <span className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
@@ -87,7 +86,6 @@ export default function Header() {
           </span>
         </Link>
         
-        {/* Desktop Navigation & Actions */}
         <div className="hidden md:flex items-center gap-4">
           <Link href="/#inquiries" className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
             Inquiries
@@ -120,7 +118,6 @@ export default function Header() {
                 <FiChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Profile Dropdown */}
               {isProfileDropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setIsProfileDropdownOpen(false)} />
@@ -178,7 +175,6 @@ export default function Header() {
           )}
         </div>
 
-        {/* Mobile Actions (Theme + Burger) */}
         <div className="flex md:hidden items-center gap-3">
           <ThemeToggle />
           <button 
@@ -190,9 +186,8 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile Menu Overlay - FIXED: Simple, reliable, no animation dependencies */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed left-0 right-0 top-16 bottom-0 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-y-auto" style={{ zIndex: 45 }}>
+        <div className="md:hidden fixed top-16 left-0 right-0 bottom-0 bg-white dark:bg-zinc-950 z-[60] overflow-y-auto border-t border-zinc-200 dark:border-zinc-800">
           <div className="px-4 py-6 space-y-6 max-w-7xl mx-auto">
             
             {isAuthLoading ? (
@@ -200,7 +195,6 @@ export default function Header() {
                 <div className="w-8 h-8 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : user ? (
-              /* Mobile User Profile */
               <div className="space-y-4">
                 <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900/50">
                   <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-sm">
@@ -215,7 +209,6 @@ export default function Header() {
                   </div>
                 </div>
 
-                {/* Mobile Anonymous Toggle */}
                 <div className="flex items-center justify-between px-4 py-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
                   <div className="flex items-center gap-2">
                     {isAnonymous ? <FiEyeOff className="w-5 h-5 text-blue-500" /> : <FiEye className="w-5 h-5 text-zinc-400" />}
@@ -247,7 +240,6 @@ export default function Header() {
               </Link>
             )}
 
-            {/* Mobile Nav Links */}
             <nav className="space-y-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
               <button 
                 onClick={() => {
@@ -271,7 +263,6 @@ export default function Header() {
         </div>
       )}
 
-      {/* Render the List Company Modal */}
       <ListCompanyModal 
         isOpen={isListModalOpen} 
         onClose={() => setIsListModalOpen(false)} 
