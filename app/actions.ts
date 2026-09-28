@@ -223,10 +223,17 @@ export async function searchCompanies(query: string) {
 // Update existing submitComment to accept parentId
 export async function submitComment(formData: FormData, reviewId: string, parentId?: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  
+  // 1. Explicitly check for user session on the server
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    return { error: 'You must be signed in to comment.' };
+  }
 
   const content = formData.get('content') as string;
-  const author_title = (formData.get('author_title') as string) || (user?.user_metadata?.full_name || 'Anonymous');
+  // Use the user's actual name from Supabase metadata if available, otherwise fallback
+  const author_title = (formData.get('author_title') as string) || (user.user_metadata?.full_name || 'Verified Insider');
 
   if (!content?.trim()) return { error: 'Comment cannot be empty.' };
 
@@ -234,8 +241,8 @@ export async function submitComment(formData: FormData, reviewId: string, parent
     .from('comments')
     .insert({
       review_id: reviewId,
-      parent_id: parentId || null, // <-- Link to parent if it's a reply
-      user_id: user?.id || null,
+      parent_id: parentId || null,
+      user_id: user.id, // Link comment to the logged-in user
       author_title,
       content,
       upvotes: 0,
@@ -244,7 +251,11 @@ export async function submitComment(formData: FormData, reviewId: string, parent
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.error('Supabase comment error:', error);
+    return { error: error.message };
+  }
+
   revalidatePath(`/company/[slug]`, 'page');
   return { success: true, data: comment };
 }

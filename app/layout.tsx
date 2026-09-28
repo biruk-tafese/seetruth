@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import Link from 'next/link';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { FiShield, FiCoffee, FiExternalLink, FiGithub, FiMail } from 'react-icons/fi';
@@ -20,16 +19,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           {/* Header */}
           <Header />
+          
           {/* Main Content */}
-          <main className="flex-grow">
+          <main className="flex-grow w-full">
             {children}
           </main>
 
           {/* Footer */}
-          <footer className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 mt-auto">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-500 dark:text-zinc-400">
-                <div className="flex items-center gap-4 flex-wrap justify-center">
+          <footer className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 mt-auto w-full">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-zinc-500 dark:text-zinc-400">
+                
+                {/* Footer Links (Stacks nicely on mobile) */}
+                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-center sm:text-left">
                   <a href="https://buymeacoffee.com/biruktafese" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     <FiCoffee className="w-4 h-4 text-amber-500" /> Buy Me a Coffee
                   </a>
@@ -43,7 +45,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <FiMail className="w-4 h-4 text-red-500" /> Report Bug
                   </a>
                 </div>
-                <p className="text-xs">&copy; {new Date().getFullYear()} SeeTruth. All rights reserved.</p>
+
+                {/* Copyright */}
+                <p className="text-xs text-center md:text-right whitespace-nowrap">
+                  &copy; {new Date().getFullYear()} SeeTruth. All rights reserved.
+                </p>
               </div>
             </div>
           </footer>
