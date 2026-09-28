@@ -1,9 +1,3 @@
-Here is a comprehensive, professionally designed, and meticulously structured `README.md` file for your GitHub repository. It adheres to your minimalist, professional aesthetic (zero native emojis, clean formatting) and thoroughly documents every feature and modification we have built.
-
-***
-
-# README.md
-
 ```markdown
 # SeeTruth
 
