@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import {
   FiArrowLeft, FiCheckCircle, FiStar, FiMapPin, FiThumbsUp,
   FiThumbsDown, FiShare2, FiPlus, FiMessageSquare, FiShield, 
-  FiAlertTriangle, FiSend, FiZap
+  FiAlertTriangle, FiSend, FiZap, FiGlobe, FiExternalLink, FiCalendar
 } from 'react-icons/fi';
 import { Company, Review, Comment } from '@/types';
 import WriteReviewModal from '@/components/WriteReviewModal';
@@ -16,12 +16,24 @@ interface CompanyProfileClientProps {
   initialInquiries: any[];
 }
 
-// Helper to get user's vote on a specific comment
-const getUserCommentVote = (commentId: string) => {
-  if (typeof window === 'undefined') return null;
-  const votes = JSON.parse(localStorage.getItem('seetruth_comment_votes') || '{}');
-  return votes[commentId] || null;
-};
+// 📊 Helper Component for Rating Breakdown
+function RatingCard({ label, score }: { label: string; score: number }) {
+  const percentage = Math.min(100, Math.max(0, (score / 5) * 100));
+  return (
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{label}</span>
+        <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{score.toFixed(1)}</span>
+      </div>
+      <div className="w-full h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-blue-600 dark:bg-blue-500 rounded-full transition-all duration-500"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 // 🧵 Recursive Reddit-Style Comment Thread Component
 function CommentThread({ 
@@ -29,17 +41,20 @@ function CommentThread({
   replyText, setReplyText, onSubmitReply, isPendingComment 
 }: any) {
   const [collapsed, setCollapsed] = useState(false);
+  
+  const getUserCommentVote = (commentId: string) => {
+    if (typeof window === 'undefined') return null;
+    const votes = JSON.parse(localStorage.getItem('seetruth_comment_votes') || '{}');
+    return votes[commentId] || null;
+  };
   const userVote = getUserCommentVote(comment.id);
 
   return (
     <div className={`relative ${depth > 0 ? 'ml-4 sm:ml-6 pl-4 border-l-2 border-zinc-200 dark:border-zinc-800 hover:border-blue-400 transition-colors' : ''}`}>
-      
-      {/* Collapse/Expand Button for nested threads */}
       {depth > 0 && (
         <button 
           onClick={() => setCollapsed(!collapsed)} 
           className="absolute -left-2 top-0 w-4 h-4 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-300 hover:bg-blue-500 hover:text-white transition-colors z-10"
-          title={collapsed ? 'Expand thread' : 'Collapse thread'}
         >
           {collapsed ? '+' : '−'}
         </button>
@@ -52,12 +67,9 @@ function CommentThread({
             <span className="text-zinc-400">•</span>
             <span className="text-zinc-400">{new Date(comment.created_at).toLocaleDateString()}</span>
           </div>
-          {depth === 0 && <span className="text-[10px] font-bold uppercase text-zinc-400">Top Level</span>}
         </div>
-        
         <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed mb-2">{comment.content}</p>
         
-        {/* Comment Actions (Like, Dislike, Reply) */}
         <div className="flex items-center gap-3 text-xs">
           <button 
             onClick={() => onVoteComment(comment.id, 'upvote')}
@@ -82,7 +94,6 @@ function CommentThread({
         </div>
       </div>
 
-      {/* Nested Reply Input */}
       {showReplyFor === comment.id && (
         <form onSubmit={(e) => onSubmitReply(e, reviewId, comment.id)} className="ml-4 sm:ml-6 mb-3 flex gap-2">
           <input
@@ -99,7 +110,6 @@ function CommentThread({
         </form>
       )}
 
-      {/* Render Nested Replies Recursively */}
       {!collapsed && comment.replies && comment.replies.length > 0 && (
         <div className="mt-2">
           {comment.replies.map((reply: Comment) => (
@@ -112,7 +122,6 @@ function CommentThread({
         </div>
       )}
       
-      {/* Collapsed State Indicator */}
       {collapsed && comment.replies && comment.replies.length > 0 && (
         <button onClick={() => setCollapsed(false)} className="text-xs text-blue-500 hover:underline ml-4 mb-2">
           Show {comment.replies.length} more {comment.replies.length === 1 ? 'reply' : 'replies'}
@@ -129,8 +138,6 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
   
   const [isPendingVote, startVoteTransition] = useTransition();
   const [isPendingComment, startCommentTransition] = useTransition();
-  
-  // State for nested replies
   const [showReplyFor, setShowReplyFor] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
@@ -160,10 +167,9 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
     return votes[reviewId] || null;
   };
 
-  // 🛠️ FIX: Save form reference synchronously to prevent null error in async transition
   const handleCommentSubmit = async (e: React.FormEvent<HTMLFormElement>, reviewId: string, parentId?: string) => {
     e.preventDefault();
-    const form = e.currentTarget; // Save reference BEFORE async call
+    const form = e.currentTarget;
     const formData = new FormData(form);
     const isAnonymous = typeof window !== 'undefined' && localStorage.getItem('seetruth_anonymous_pref') === 'true';
     formData.set('author_title', isAnonymous ? 'Anonymous Insider' : 'Verified Insider');
@@ -172,7 +178,6 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
       const result = await submitComment(formData, reviewId, parentId);
       if (result.success && result.data) {
         if (parentId) {
-          // Insert reply into the nested tree
           setReviews(prev => prev.map(rev => {
             if (rev.id !== reviewId) return rev;
             const insertReply = (comments: Comment[]): Comment[] => comments.map(c => {
@@ -183,10 +188,9 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
             return { ...rev, comments: insertReply(rev.comments || []) };
           }));
         } else {
-          // Add top-level comment
           setReviews(prev => prev.map(rev => rev.id === reviewId ? { ...rev, comments: [...(rev.comments || []), result.data] } : rev));
         }
-        form.reset(); // Use saved reference
+        form.reset();
         setShowReplyFor(null);
         setReplyText('');
       } else {
@@ -195,7 +199,6 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
     });
   };
 
-  // Handle voting on individual comments
   const handleVoteComment = (commentId: string, type: 'upvote' | 'downvote') => {
     const votes = JSON.parse(localStorage.getItem('seetruth_comment_votes') || '{}');
     if (votes[commentId] === type) return;
@@ -218,44 +221,113 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950 pb-20">
-      {/* Top Navigation & Header (Kept same as before) */}
-      <div className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-20">
+      {/* Top Navigation */}
+      <div className="border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <button onClick={() => window.history.back()} className="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-            <FiArrowLeft className="w-4 h-4" /> Back
+            <FiArrowLeft className="w-4 h-4" /> Back to Listings
           </button>
           <button onClick={handleShare} className="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-            <FiShare2 className="w-4 h-4" /> {copied ? 'Copied!' : 'Share'}
+            <FiShare2 className="w-4 h-4" /> {copied ? 'Link Copied!' : 'Share Profile'}
           </button>
         </div>
       </div>
 
-      <header className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 py-12 px-6 md:px-12">
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-start gap-5">
-            <div className="w-16 h-16 rounded-2xl bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-2xl flex-shrink-0">
-              {company.name.charAt(0)}
+      {/* 🌟 Premium Company Header with Cover Photo */}
+      <header className="relative border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        {/* Cover Photo Background */}
+        <div className="h-48 sm:h-64 w-full bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-900 dark:to-indigo-950 relative overflow-hidden">
+          {company.logo_url ? (
+            <img src={company.logo_url} alt="Cover" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm scale-110" />
+          ) : (
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          )}
+        </div>
+
+        <div className="max-w-5xl mx-auto px-6 pb-8 relative">
+          {/* Overlapping Logo & Basic Info */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-6 -mt-16 mb-6">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-white dark:bg-zinc-900 border-4 border-white dark:border-zinc-950 shadow-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {company.logo_url ? (
+                <img src={company.logo_url} alt={company.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl sm:text-5xl font-bold text-blue-600 dark:text-blue-400">
+                  {company.name.charAt(0)}
+                </span>
+              )}
             </div>
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">{company.name}</h1>
-                {company.verified && <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-medium border border-blue-200 dark:border-blue-900"><FiCheckCircle className="w-3 h-3" /> Verified</span>}
+            
+            <div className="flex-1 pb-2">
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+                  {company.name}
+                </h1>
+                {company.verified && (
+                  <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-medium border border-blue-200 dark:border-blue-900">
+                    <FiCheckCircle className="w-3.5 h-3.5" /> Verified Entity
+                  </span>
+                )}
               </div>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">{company.category}</p>
-              <div className="flex items-center gap-3 mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                <span className="inline-flex items-center gap-1"><FiMapPin className="w-3.5 h-3.5" /> {company.location}</span>
+              <p className="text-base text-zinc-600 dark:text-zinc-400 font-medium mb-3">{company.category}</p>
+              
+              {/* Rich Metadata Grid */}
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <div className="flex items-center gap-1.5">
+                  <FiMapPin className="w-4 h-4 text-zinc-400" />
+                  <span>{company.location}</span>
+                </div>
+                {company.address && (
+                  <div className="flex items-center gap-1.5">
+                    <FiMapPin className="w-4 h-4 text-zinc-400" />
+                    <span>{company.address}</span>
+                  </div>
+                )}
+                {company.website && (
+                  <a 
+                    href={company.website.startsWith('http') ? company.website : `https://${company.website}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    <FiGlobe className="w-4 h-4" />
+                    <span className="truncate max-w-[200px]">{company.website.replace(/^https?:\/\//, '')}</span>
+                    <FiExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <FiCalendar className="w-4 h-4 text-zinc-400" />
+                  <span>Est. {new Date(company.created_at).getFullYear()}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:items-end gap-3 pb-2 w-full sm:w-auto">
+              <button
+                onClick={() => setIsWriteModalOpen(true)}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-all shadow-sm inline-flex items-center justify-center gap-2"
+              >
+                <FiPlus className="w-4 h-4" /> Write Review
+              </button>
+              <div className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400">
+                <FiStar className="w-4 h-4 fill-amber-400 text-amber-400" />
+                <span className="font-bold text-zinc-900 dark:text-zinc-100 text-lg">{company.overall_rating}</span>
+                <span>({company.review_count} reviews)</span>
               </div>
             </div>
           </div>
-          <button onClick={() => setIsWriteModalOpen(true)} className="px-5 py-3 rounded-xl bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-all shadow-sm inline-flex items-center gap-2">
-            <FiPlus className="w-4 h-4" /> Write Review
-          </button>
+
+          {/* 📊 Rating Breakdown Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+            <RatingCard label="Culture & Values" score={company.culture_rating} />
+            <RatingCard label="Management" score={company.management_rating} />
+            <RatingCard label="Compensation" score={company.compensation_rating} />
+          </div>
         </div>
       </header>
 
-      {/* AI Summary Teaser */}
-      <div className="max-w-4xl mx-auto px-6 mt-8">
+      {/* ✨ AI Summary Teaser */}
+      <div className="max-w-5xl mx-auto px-6 mt-8">
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-5 flex items-start gap-4">
           <div className="p-2.5 bg-blue-100 dark:bg-blue-900/50 rounded-xl text-blue-600 dark:text-blue-400 flex-shrink-0"><FiZap className="w-5 h-5" /></div>
           <div className="flex-1">
@@ -263,25 +335,25 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
               <h3 className="text-sm font-bold text-blue-900 dark:text-blue-100">AI-Powered Company Summary</h3>
               <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full">Coming Soon</span>
             </div>
-            <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">We are currently analyzing employee reviews and comments to generate instant, unbiased insights about {company.name}'s culture. Stay tuned!</p>
+            <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">We are currently analyzing employee reviews and comments to generate instant, unbiased insights about {company.name}'s culture, management, and compensation. Stay tuned!</p>
           </div>
         </div>
       </div>
 
       {/* Main Reviews Feed */}
-      <main className="max-w-4xl mx-auto px-6 py-12 w-full flex-grow">
+      <main className="max-w-5xl mx-auto px-6 py-12 w-full flex-grow">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Verified Reviews</h2>
             <div className="flex items-center gap-1 text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-full border border-amber-200 dark:border-amber-900">
-              <FiStar className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {company.overall_rating}
+              <FiStar className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {company.overall_rating} Rating
             </div>
           </div>
-          <span className="text-xs text-zinc-400">{reviews.length} reviews</span>
+          <span className="text-xs text-zinc-400">{reviews.length} reviews submitted</span>
         </div>
 
         {reviews.length === 0 ? (
-          <div className="text-center py-16 bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl border border-zinc-200 dark:border-zinc-800">
+          <div className="text-center py-16 bg-white dark:bg-zinc-900/50 rounded-3xl border border-zinc-200 dark:border-zinc-800">
             <FiMessageSquare className="w-8 h-8 text-zinc-400 mx-auto mb-3" />
             <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">No reviews yet for {company.name}</p>
           </div>
@@ -290,20 +362,26 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
             {reviews.map((rev) => {
               const userVote = getUserVote(rev.id);
               return (
-                <article key={rev.id} className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6">
-                  {/* Review Header & Content (Kept same as before) */}
+                <article key={rev.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-sm">
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{rev.author_title}</span>
-                        <span className="text-xs px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium">{rev.is_anonymous ? 'Anonymous' : 'Verified'}</span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium">
+                          {rev.is_anonymous ? 'Anonymous' : 'Verified Insider'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-zinc-400">
-                        <span className="inline-flex items-center gap-1 text-amber-500 font-bold"><FiStar className="w-3.5 h-3.5 fill-amber-400" /> {rev.rating}.0</span>
-                        <span>•</span><span>{new Date(rev.created_at).toLocaleDateString()}</span>
+                        <span className="inline-flex items-center gap-1 text-amber-500 font-bold">
+                          <FiStar className="w-3.5 h-3.5 fill-amber-400" /> {rev.rating}.0
+                        </span>
+                        <span>•</span>
+                        <span>{new Date(rev.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900"><FiShield className="w-3 h-3" /> Verified</div>
+                    <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+                      <FiShield className="w-3 h-3" /> Verified Review
+                    </div>
                   </div>
 
                   <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed mb-6">{rev.comment}</p>
@@ -319,14 +397,36 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
                     </div>
                   </div>
 
+                  {rev.image_url && (
+                    <div className="mb-6 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 max-h-80 bg-black/5">
+                      <img src={rev.image_url} alt="Review attachment" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+
                   {/* Review Voting */}
                   <div className="flex items-center justify-between pt-4 border-t border-zinc-200 dark:border-zinc-800 text-xs">
                     <span className="text-zinc-400">Was this review helpful?</span>
                     <div className="flex items-center gap-3">
-                      <button onClick={() => handleVoteAction(rev.id, 'upvote')} disabled={userVote === 'upvote' || isPendingVote} className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all font-medium ${userVote === 'upvote' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-blue-500'}`}>
+                      <button
+                        onClick={() => handleVoteAction(rev.id, 'upvote')}
+                        disabled={userVote === 'upvote' || isPendingVote}
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all font-medium ${
+                          userVote === 'upvote' 
+                            ? 'bg-blue-600 border-blue-600 text-white cursor-default' 
+                            : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-blue-500'
+                        }`}
+                      >
                         <FiThumbsUp className="w-3.5 h-3.5" /> {rev.upvotes}
                       </button>
-                      <button onClick={() => handleVoteAction(rev.id, 'downvote')} disabled={userVote === 'downvote' || isPendingVote} className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all font-medium ${userVote === 'downvote' ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-rose-500'}`}>
+                      <button
+                        onClick={() => handleVoteAction(rev.id, 'downvote')}
+                        disabled={userVote === 'downvote' || isPendingVote}
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all font-medium ${
+                          userVote === 'downvote' 
+                            ? 'bg-rose-600 border-rose-600 text-white cursor-default' 
+                            : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-rose-500'
+                        }`}
+                      >
                         <FiThumbsDown className="w-3.5 h-3.5" /> {rev.downvotes}
                       </button>
                     </div>
@@ -344,10 +444,9 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
                       <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">Comments are permanent and cannot be deleted. Please be respectful.</p>
                     </div>
 
-                    {/* Render Top-Level Comments using the Recursive Component */}
                     {rev.comments && rev.comments.length > 0 ? (
                       <div className="space-y-4 mb-6">
-                        {rev.comments.map((c) => (
+                        {rev.comments.map((c: Comment) => (
                           <CommentThread 
                             key={c.id} comment={c} reviewId={rev.id} depth={0}
                             onVoteComment={handleVoteComment} showReplyFor={showReplyFor} setShowReplyFor={setShowReplyFor}
@@ -361,9 +460,20 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
 
                     {/* Top-Level Comment Input */}
                     <form onSubmit={(e) => handleCommentSubmit(e, rev.id)} className="flex gap-2">
-                      <input type="text" name="content" placeholder="Add a respectful comment..." className="flex-1 px-4 py-2.5 text-sm rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" required />
-                      <button type="submit" disabled={isPendingComment} className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center gap-1.5 disabled:opacity-50">
-                        <FiSend className="w-4 h-4" /><span>{isPendingComment ? 'Sending...' : 'Reply'}</span>
+                      <input
+                        type="text"
+                        name="content"
+                        placeholder="Add a respectful comment..."
+                        className="flex-1 px-4 py-2.5 text-sm rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        required
+                      />
+                      <button
+                        type="submit"
+                        disabled={isPendingComment}
+                        className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        <FiSend className="w-4 h-4" />
+                        <span>{isPendingComment ? 'Sending...' : 'Reply'}</span>
                       </button>
                     </form>
                   </div>
@@ -374,7 +484,13 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
         )}
       </main>
 
-      <WriteReviewModal isOpen={isWriteModalOpen} onClose={() => setIsWriteModalOpen(false)} companyId={company.id} companyName={company.name} onReviewAdded={(newRev) => setReviews([newRev, ...reviews])} />
+      <WriteReviewModal
+        isOpen={isWriteModalOpen}
+        onClose={() => setIsWriteModalOpen(false)}
+        companyId={company.id}
+        companyName={company.name}
+        onReviewAdded={(newRev) => setReviews([newRev, ...reviews])}
+      />
     </div>
   );
 }

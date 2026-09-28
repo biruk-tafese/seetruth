@@ -96,19 +96,24 @@ export async function addInquiryReply(inquiryId: string, content: string, author
 
   if (!content.trim()) return { error: 'Reply cannot be empty.' };
 
+  // 1. Insert the reply
   const { data: reply, error: replyError } = await supabase
     .from('inquiry_replies')
     .insert({
       inquiry_id: inquiryId,
       content,
-      author_title: authorTitle, // <-- Saves the dynamic title
+      author_title: authorTitle || 'Anonymous User',
       user_id: user?.id || null,
     })
     .select()
     .single();
 
-  if (replyError) return { error: replyError.message };
+  if (replyError) {
+    console.error('Supabase reply insert error:', replyError);
+    return { error: replyError.message };
+  }
 
+  // 2. Safely increment the replies_count on the parent inquiry
   const { data: currentInquiry } = await supabase
     .from('inquiries')
     .select('replies_count')
@@ -116,7 +121,15 @@ export async function addInquiryReply(inquiryId: string, content: string, author
     .single();
     
   const newCount = (currentInquiry?.replies_count || 0) + 1;
-  await supabase.from('inquiries').update({ replies_count: newCount }).eq('id', inquiryId);
+  
+  const { error: updateError } = await supabase
+    .from('inquiries')
+    .update({ replies_count: newCount })
+    .eq('id', inquiryId);
+
+  if (updateError) {
+    console.error('Supabase inquiry update error:', updateError);
+  }
 
   revalidatePath('/');
   return { success: true, data: reply };

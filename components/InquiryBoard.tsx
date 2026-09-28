@@ -56,17 +56,16 @@ export default function InquiryBoard() {
     setReplyingTo(null); // Close reply form when collapsing
   };
 
-  const handleReplySubmit = async (e: React.FormEvent, inquiryId: string) => {
+    const handleReplySubmit = async (e: React.FormEvent, inquiryId: string) => {
     e.preventDefault();
     if (!replyText.trim()) return;
 
     setIsSubmittingReply(true);
 
-    // 1. Check anonymous preference from localStorage (set by the Header toggle)
-    const isAnonymous = typeof window !== 'undefined' && localStorage.getItem('seetruth_anonymous_pref') === 'true';
-    const authorTitle = isAnonymous ? 'Anonymous Insider' : 'Verified Insider';
+    // Force "Anonymous User" as requested
+    const authorTitle = 'Anonymous User';
 
-    // 2. Optimistic UI update
+    // Optimistic UI update
     const tempReply: InquiryReply = {
       id: `temp-${Date.now()}`,
       inquiry_id: inquiryId,
@@ -77,11 +76,11 @@ export default function InquiryBoard() {
 
     setInquiries(prev => prev.map(inq => 
       inq.id === inquiryId 
-        ? { ...inq, replies: [...(inq.replies || []), tempReply], replies_count: inq.replies_count + 1 }
+        ? { ...inq, replies: [...(inq.replies || []), tempReply], replies_count: (inq.replies_count || 0) + 1 }
         : inq
     ));
 
-    // 3. Call Server Action
+    // Call Server Action
     const result = await addInquiryReply(inquiryId, replyText, authorTitle);
     
     if (result.success && result.data) {
@@ -94,13 +93,15 @@ export default function InquiryBoard() {
       setReplyText('');
       setReplyingTo(null);
     } else {
-      // Revert on error
+      // Revert optimistic UI on error
       setInquiries(prev => prev.map(inq => 
         inq.id === inquiryId 
-          ? { ...inq, replies: inq.replies?.filter(r => r.id !== tempReply.id), replies_count: inq.replies_count - 1 }
+          ? { ...inq, replies: inq.replies?.filter(r => r.id !== tempReply.id), replies_count: Math.max(0, (inq.replies_count || 1) - 1) }
           : inq
       ));
-      alert(result.error || 'Failed to post reply.');
+      
+      // Show exact error to help debug
+      alert(`Failed to post reply: ${result.error || 'Unknown error'}`);
     }
 
     setIsSubmittingReply(false);
