@@ -10,13 +10,37 @@ export const INITIAL_COMPANIES: Company[] = [
 
 export const INITIAL_REVIEWS: Review[] = [
   {
-    id: 'r-1', company_id: 'c-1', is_anonymous: true, author_title: 'Current Senior Software Engineer', rating: 5, culture_score: 5, management_score: 4, compensation_score: 5, salary_amount: 85000,
-    pros: 'Excellent healthcare benefits, fast-paced agile environment, robust tech stack.',
-    cons: 'High expectations and occasional late-night deployments required.',
-    comment: 'Working here has been an incredible journey. Leadership listens to engineering feedback and growth opportunities are truly exceptional.',
-    image_url: 'https://placehold.co/600x400/1e293b/38bdf8?text=Modern+Office+Workspace', upvotes: 14, downvotes: 1, created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-    comments: [{ id: 'cm-1', review_id: 'r-1', author_title: 'Former DevOps Engineer', content: 'Can confirm the tech stack is top notch. How is the hybrid work policy currently?', upvotes: 3, created_at: new Date(Date.now() - 86400000).toISOString() }]
-  }
+    id: 'r1',
+    company_id: 'c1',
+    user_id: undefined,
+    is_anonymous: true,
+    author_title: 'Current Network Operations Engineer',
+    rating: 4,
+    culture_score: 4,
+    management_score: 3,
+    compensation_score: 4,
+    salary_amount: 45000,
+    pros: 'Job security, strong pension scheme, and excellent medical coverage.',
+    cons: 'Bureaucratic approval workflows and legacy infrastructure bottlenecks.',
+    comment: 'Great stability and great benefits for long-term engineers, though bureaucracy can slow down modern software deployment cycles.',
+    image_url: undefined,
+    upvotes: 14,
+    downvotes: 2,
+    created_at: '2026-08-15T10:30:00Z',
+    comments: [
+      {
+        id: 'cm-1',
+        review_id: 'r1',
+        user_id: undefined,
+        author_title: 'Former DevOps Engineer',
+        content: 'Can confirm the tech stack is top notch. How is the hybrid work policy currently?',
+        upvotes: 3,
+        downvotes: 0, // <-- ADDED THIS TO FIX THE TYPESCRIPT ERROR
+        created_at: '2026-08-16T10:30:00Z',
+      }
+    ],
+  },
+  // ... other reviews
 ];
 
 export const INITIAL_INQUIRIES: Inquiry[] = [

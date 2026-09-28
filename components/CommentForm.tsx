@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { FiMessageSquare, FiAlertTriangle } from 'react-icons/fi';
-import { addCommentToReview } from '@/app/actions';
+import { FiMessageSquare } from 'react-icons/fi';
+import { addCommentToReview } from '@/app/actions'; // Make sure this matches your action name (e.g., submitComment)
 import { Comment } from '@/types';
 
 interface CommentFormProps {
@@ -31,19 +31,19 @@ export default function CommentForm({ reviewId, onCommentAdded }: CommentFormPro
       author_title: authorTitle,
       content,
       upvotes: 0,
+      downvotes: 0, // <-- ADDED THIS TO FIX THE TYPESCRIPT ERROR
       created_at: new Date().toISOString(),
     };
     onCommentAdded(tempComment);
 
-    // Database insertion
+    // Database insertion (Ensure this function name matches your app/actions.ts)
     const result = await addCommentToReview(reviewId, content, authorTitle);
 
     if (result.success && result.data) {
-      // Replace temp with real data (optional, but good for ID consistency)
       setContent('');
     } else {
       alert(result.error || 'Failed to post comment.');
-      // Revert optimistic UI here if needed
+      // Note: In a production app, you'd also want to revert the optimistic UI update here
     }
 
     setIsSubmitting(false);
