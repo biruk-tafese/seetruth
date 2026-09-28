@@ -7,13 +7,13 @@ import { createClient } from '@/lib/supabase/client';
 import { ThemeToggle } from './ThemeProvider';
 import ListCompanyModal from './ListCompanyModal';
 import { 
-  FiShield, FiLogOut, FiMenu, FiX, FiChevronDown, FiEye, FiEyeOff, FiPlusCircle, FiCheckCircle 
+  FiLogOut, FiMenu, FiX, FiChevronDown, FiEye, FiEyeOff, FiPlusCircle, FiCheckCircle 
 } from 'react-icons/fi';
 import type { User } from '@supabase/supabase-js';
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true); // Prevents flashing "Sign In" on mobile
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -34,7 +34,6 @@ export default function Header() {
       setUser(session?.user ?? null);
       setIsAuthLoading(false);
       
-      // CRITICAL: Refresh the app globally on ANY auth state change
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
         router.refresh();
       }
@@ -73,7 +72,6 @@ export default function Header() {
     return 'U';
   };
 
-  // Safely extract user info
   const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   const email = user?.email || '';
 
@@ -126,7 +124,7 @@ export default function Header() {
               {isProfileDropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setIsProfileDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 overflow-hidden">
                     <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
@@ -192,9 +190,9 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile Menu Overlay (Fixed to prevent cutoff and ensure proper full-screen display) */}
+      {/* Mobile Menu Overlay - FIXED: Simple, reliable, no animation dependencies */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed top-16 left-0 right-0 bottom-0 bg-white dark:bg-zinc-950 z-40 overflow-y-auto border-t border-zinc-200 dark:border-zinc-800 shadow-xl animate-in slide-in-from-top-2 duration-200">
+        <div className="md:hidden fixed left-0 right-0 top-16 bottom-0 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-y-auto" style={{ zIndex: 45 }}>
           <div className="px-4 py-6 space-y-6 max-w-7xl mx-auto">
             
             {isAuthLoading ? (
