@@ -179,6 +179,7 @@ export default function Header() {
           <ThemeToggle />
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle Menu"
             className="p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
             {isMobileMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
@@ -186,9 +187,13 @@ export default function Header() {
         </div>
       </div>
 
+      {/* Mobile Menu - Guaranteed Visible */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed top-16 left-0 right-0 bottom-0 bg-white dark:bg-zinc-950 z-[60] overflow-y-auto border-t border-zinc-200 dark:border-zinc-800">
-          <div className="px-4 py-6 space-y-6 max-w-7xl mx-auto">
+        <div 
+          className="md:hidden fixed inset-0 top-16 bg-white dark:bg-zinc-950 z-[9999] overflow-y-auto"
+          style={{ minHeight: 'calc(100vh - 4rem)' }}
+        >
+          <div className="px-4 py-6 space-y-6 max-w-7xl mx-auto min-h-full">
             
             {isAuthLoading ? (
               <div className="flex items-center justify-center py-12">
