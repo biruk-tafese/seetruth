@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { FiX, FiBriefcase, FiMessageSquare, FiAlertCircle } from 'react-icons/fi';
 import AuthModal from '@/components/AuthModal';
 import { Inquiry } from '@/types';
+import { createClient } from '@/lib/supabase/client';
 import { createInquiry } from '@/app/actions';
 
 interface AskQuestionModalProps {
@@ -19,8 +20,24 @@ export default function AskQuestionModal({ isOpen, onClose, onSuccess }: AskQues
   const [showAuth, setShowAuth] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
-  const hasAsked = typeof window !== 'undefined' && localStorage.getItem('seetruth_has_asked') === 'true';
+  const supabase = createClient();
+
+  // Check auth status when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const checkAuth = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsAuthenticated(!!user);
+      };
+      checkAuth();
+    }
+  }, [isOpen, supabase]);
+
+  // Only enforce the anonymous limit if the user is NOT authenticated
+  const hasAskedAnonymously = typeof window !== 'undefined' && localStorage.getItem('seetruth_has_asked') === 'true';
+  const isBlocked = !isAuthenticated && hasAskedAnonymously;
 
   if (!isOpen) return null;
 
@@ -28,7 +45,7 @@ export default function AskQuestionModal({ isOpen, onClose, onSuccess }: AskQues
     e.preventDefault();
     setError(null);
     
-    if (hasAsked) {
+    if (isBlocked) {
       setShowAuth(true);
       return;
     }
@@ -43,7 +60,10 @@ export default function AskQuestionModal({ isOpen, onClose, onSuccess }: AskQues
       if (result.error) {
         setError(result.error);
       } else if (result.success && result.data) {
-        localStorage.setItem('seetruth_has_asked', 'true');
+        // Only set the anonymous flag if they are NOT authenticated
+        if (!isAuthenticated) {
+          localStorage.setItem('seetruth_has_asked', 'true');
+        }
         onSuccess(result.data);
         setCompanyName('');
         setQuestion('');
@@ -71,8 +91,9 @@ export default function AskQuestionModal({ isOpen, onClose, onSuccess }: AskQues
             </div>
           )}
 
-          {hasAsked && !error && (
+          {isBlocked && !error && (
             <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2">
+              <FiAlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>You have already submitted an anonymous question. Please sign in to ask more.</span>
             </div>
           )}
@@ -123,14 +144,14 @@ export default function AskQuestionModal({ isOpen, onClose, onSuccess }: AskQues
 
             <button
               type="submit"
-              disabled={isPending || hasAsked}
+              disabled={isPending || isBlocked}
               className={`w-full py-2.5 text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-500/20 ${
-                hasAsked 
+                isBlocked 
                   ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 cursor-not-allowed' 
                   : 'bg-blue-600 hover:bg-blue-700 text-white'
               }`}
             >
-              {isPending ? 'Posting...' : (hasAsked ? 'Sign In Required' : 'Post Question Anonymously')}
+              {isPending ? 'Posting...' : (isBlocked ? 'Sign In Required' : 'Post Question')}
             </button>
           </form>
         </div>

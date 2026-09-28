@@ -203,3 +203,19 @@ export async function addCommentToReview(reviewId: string, content: string, auth
   revalidatePath('/');
   return { success: true, data: comment };
 }
+
+// Add this to your existing app/actions.ts file
+
+export async function searchCompanies(query: string) {
+  if (!query || query.length < 2) return [];
+  
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('companies')
+    .select('id, name, slug, category')
+    .ilike('name', `%${query}%`)
+    .limit(5);
+  
+  if (error) return [];
+  return data || [];
+}
