@@ -13,6 +13,7 @@ import type { User } from '@supabase/supabase-js';
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true); // Prevents flashing "Sign In" on mobile
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -21,15 +22,17 @@ export default function Header() {
   const supabase = createClient();
   const router = useRouter();
 
-    useEffect(() => {
+  useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      setIsAuthLoading(false);
     };
     getUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      setIsAuthLoading(false);
       
       // CRITICAL: Refresh the app globally on ANY auth state change
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
@@ -102,7 +105,9 @@ export default function Header() {
           
           <ThemeToggle />
 
-          {user ? (
+          {isAuthLoading ? (
+            <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
+          ) : user ? (
             <div className="relative">
               <button 
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
@@ -121,7 +126,7 @@ export default function Header() {
               {isProfileDropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setIsProfileDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
@@ -187,14 +192,18 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay (Fixed to prevent cutoff and ensure proper full-screen display) */}
       {isMobileMenuOpen && (
-        <div className="md:hidden absolute top-16 left-0 right-0 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-lg z-40 max-h-[calc(100vh-4rem)] overflow-y-auto">
-          <div className="px-4 py-6 space-y-6">
+        <div className="md:hidden fixed top-16 left-0 right-0 bottom-0 bg-white dark:bg-zinc-950 z-40 overflow-y-auto border-t border-zinc-200 dark:border-zinc-800 shadow-xl animate-in slide-in-from-top-2 duration-200">
+          <div className="px-4 py-6 space-y-6 max-w-7xl mx-auto">
             
-            {/* Mobile User Profile (Enhanced for proper display) */}
-            {user ? (
-              <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            {isAuthLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : user ? (
+              /* Mobile User Profile */
+              <div className="space-y-4">
                 <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900/50">
                   <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-sm">
                     {getInitials(fullName, email)}
@@ -234,7 +243,7 @@ export default function Header() {
               <Link 
                 href="/auth" 
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="block w-full text-center px-4 py-3 text-sm font-semibold text-white bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 rounded-xl shadow-sm"
+                className="block w-full text-center px-4 py-3 text-sm font-semibold text-white bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 rounded-xl shadow-sm hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
               >
                 Sign In / Sign Up
               </Link>
