@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { FiX, FiMapPin, FiGlobe, FiImage, FiBriefcase, FiAlertCircle, FiPlusCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiX, FiMapPin, FiGlobe, FiImage, FiBriefcase, FiAlertCircle, FiPlusCircle, FiCheckCircle, FiChevronDown } from 'react-icons/fi';
 import { createCompany, searchCompanies } from '@/app/actions';
 
 interface ListCompanyModalProps {
@@ -140,6 +140,32 @@ export default function ListCompanyModal({ isOpen, onClose }: ListCompanyModalPr
                 </div>
               </div>
             )}
+          </div>
+
+          {/* NEW: Category Dropdown */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Category *</label>
+            <div className="relative">
+              <FiBriefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <select 
+                name="category" 
+                defaultValue="General"
+                className="w-full pl-10 pr-10 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-zinc-100 appearance-none cursor-pointer"
+              >
+                <option value="General">General</option>
+                <option value="Banking & Finance">Banking & Finance</option>
+                <option value="Telecom & Tech">Telecom & Tech</option>
+                <option value="Software & IT">Software & IT</option>
+                <option value="Transport & Logistics">Transport & Logistics</option>
+                <option value="Hospitality & Tourism">Hospitality & Tourism</option>
+                <option value="Manufacturing & FMCG">Manufacturing & FMCG</option>
+                <option value="Food & Beverage">Food & Beverage</option>
+                <option value="Energy & Utilities">Energy & Utilities</option>
+                <option value="Retail & E-commerce">Retail & E-commerce</option>
+                <option value="NGO & Development">NGO & Development</option>
+              </select>
+              <FiChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+            </div>
           </div>
 
           <div>

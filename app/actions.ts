@@ -7,7 +7,6 @@ import { redirect } from 'next/navigation';
 export async function createCompany(formData: FormData) {
   const supabase = await createClient();
   
-  // Require authentication to list a company (prevents spam)
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { error: 'You must be signed in to list a company.' };
@@ -17,6 +16,7 @@ export async function createCompany(formData: FormData) {
   const location = formData.get('location') as string;
   const website = formData.get('website') as string;
   const logo_url = formData.get('logo_url') as string;
+  const category = (formData.get('category') as string) || 'General'; // <-- Read from form
 
   if (!name || !location) {
     return { error: 'Company name and location are required.' };
@@ -36,7 +36,7 @@ export async function createCompany(formData: FormData) {
       location,
       website: website || null,
       logo_url: logo_url || null,
-      category: 'General', // Default category
+      category, // <-- Use the selected category
       verified: false,
       overall_rating: 0,
       culture_rating: 0,
@@ -54,10 +54,7 @@ export async function createCompany(formData: FormData) {
     return { error: error.message };
   }
 
-  // Revalidate homepage to show the new company immediately
   revalidatePath('/');
-  
-  // Redirect to the newly created company profile
   redirect(`/company/${data.slug}`);
 }
 
