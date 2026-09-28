@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import {
   FiArrowLeft, FiCheckCircle, FiStar, FiMapPin, FiThumbsUp,
-  FiThumbsDown, FiShare2, FiPlus, FiMessageSquare, FiShield, FiAlertTriangle
+  FiThumbsDown, FiShare2, FiPlus, FiMessageSquare, FiShield, 
+  FiAlertTriangle, FiSend, FiZap // <-- Changed FiSparkles to FiZap
 } from 'react-icons/fi';
 import { Company, Review } from '@/types';
 import WriteReviewModal from '@/components/WriteReviewModal';
+import { submitComment, submitVote } from '@/app/actions';
 
 interface CompanyProfileClientProps {
   company: Company;
@@ -18,6 +20,9 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
   const [isWriteModalOpen, setIsWriteModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  const [isPendingVote, startVoteTransition] = useTransition();
+  const [isPendingComment, startCommentTransition] = useTransition();
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -25,43 +30,48 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleVote = (reviewId: string, type: 'up' | 'down') => {
-    // 1. Check localStorage for existing vote on this specific review
+  const handleVoteAction = (reviewId: string, type: 'upvote' | 'downvote') => {
     const votes = JSON.parse(localStorage.getItem('seetruth_votes') || '{}');
-    const currentVote = votes[reviewId];
+    if (votes[reviewId] === type) return; // Prevent endless clicking
 
-    // 2. If already voted this way, do nothing (prevent endless clicking)
-    if (currentVote === type) return;
-
-    // 3. Optimistically update the UI
-    setReviews(prev => prev.map(rev => {
-      if (rev.id === reviewId) {
-        let newUpvotes = rev.upvotes;
-        let newDownvotes = rev.downvotes;
-
-        // Remove previous vote if it exists
-        if (currentVote === 'up') newUpvotes -= 1;
-        if (currentVote === 'down') newDownvotes -= 1;
-
-        // Add new vote
-        if (type === 'up') newUpvotes += 1;
-        if (type === 'down') newDownvotes += 1;
-
-        return { ...rev, upvotes: newUpvotes, downvotes: newDownvotes };
+    startVoteTransition(async () => {
+      const result = await submitVote(reviewId, type);
+      if (result.success) {
+        setReviews(prev => prev.map(rev => 
+          rev.id === reviewId ? { ...rev, upvotes: result.upvotes, downvotes: result.downvotes } : rev
+        ));
+        votes[reviewId] = type;
+        localStorage.setItem('seetruth_votes', JSON.stringify(votes));
+      } else if (result.error) {
+        alert(result.error);
       }
-      return rev;
-    }));
-
-    // 4. Save the new vote to localStorage
-    votes[reviewId] = type;
-    localStorage.setItem('seetruth_votes', JSON.stringify(votes));
+    });
   };
 
-  // Helper to check if user already voted a certain way
   const getUserVote = (reviewId: string) => {
     if (typeof window === 'undefined') return null;
     const votes = JSON.parse(localStorage.getItem('seetruth_votes') || '{}');
     return votes[reviewId] || null;
+  };
+
+  const handleCommentSubmit = async (e: React.FormEvent<HTMLFormElement>, reviewId: string) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const isAnonymous = typeof window !== 'undefined' && localStorage.getItem('seetruth_anonymous_pref') === 'true';
+    
+    formData.set('author_title', isAnonymous ? 'Anonymous Insider' : 'Verified Insider');
+
+    startCommentTransition(async () => {
+      const result = await submitComment(formData, reviewId);
+      if (result.success && result.data) {
+        setReviews(prev => prev.map(rev => 
+          rev.id === reviewId ? { ...rev, comments: [...(rev.comments || []), result.data] } : rev
+        ));
+        e.currentTarget.reset();
+      } else {
+        alert(result.error || 'Failed to post comment.');
+      }
+    });
   };
 
   return (
@@ -109,6 +119,26 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
           </button>
         </div>
       </header>
+
+      {/* ✨ AI Summary Teaser (Smart & Nice) */}
+      <div className="max-w-4xl mx-auto px-6 mt-8">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-5 flex items-start gap-4">
+          <div className="p-2.5 bg-blue-100 dark:bg-blue-900/50 rounded-xl text-blue-600 dark:text-blue-400 flex-shrink-0">
+            <FiZap className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-sm font-bold text-blue-900 dark:text-blue-100">AI-Powered Company Summary</h3>
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full">
+                Coming Soon
+              </span>
+            </div>
+            <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
+              We are currently analyzing employee reviews and comments to generate instant, unbiased insights about {company.name}'s culture, management, and compensation. Stay tuned!
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Main Reviews Feed */}
       <main className="max-w-4xl mx-auto px-6 py-12 w-full flex-grow">
@@ -179,10 +209,10 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
                     <span className="text-zinc-400">Was this review helpful?</span>
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => handleVote(rev.id, 'up')}
-                        disabled={userVote === 'up'}
+                        onClick={() => handleVoteAction(rev.id, 'upvote')}
+                        disabled={userVote === 'upvote' || isPendingVote}
                         className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all font-medium ${
-                          userVote === 'up' 
+                          userVote === 'upvote' 
                             ? 'bg-blue-600 border-blue-600 text-white cursor-default' 
                             : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-blue-500'
                         }`}
@@ -190,10 +220,10 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
                         <FiThumbsUp className="w-3.5 h-3.5" /> {rev.upvotes}
                       </button>
                       <button
-                        onClick={() => handleVote(rev.id, 'down')}
-                        disabled={userVote === 'down'}
+                        onClick={() => handleVoteAction(rev.id, 'downvote')}
+                        disabled={userVote === 'downvote' || isPendingVote}
                         className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all font-medium ${
-                          userVote === 'down' 
+                          userVote === 'downvote' 
                             ? 'bg-rose-600 border-rose-600 text-white cursor-default' 
                             : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-rose-500'
                         }`}
@@ -210,11 +240,10 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
                       <h4 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Discussion & Replies</h4>
                     </div>
                     
-                    {/* Permanent Comment Warning */}
                     <div className="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-start gap-2">
                       <FiAlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                       <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
-                        Comments are permanent and cannot be deleted. Please be respectful and careful with what you say.
+                        Comments are permanent and cannot be deleted. Please be respectful.
                       </p>
                     </div>
 
@@ -234,19 +263,22 @@ export default function CompanyProfileClient({ company, initialReviews }: Compan
                       <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 italic">No replies yet.</p>
                     )}
 
-                    {/* Comment Input */}
-                    <form className="flex gap-2">
+                    {/* Comment Input Form */}
+                    <form onSubmit={(e) => handleCommentSubmit(e, rev.id)} className="flex gap-2">
                       <input
                         type="text"
+                        name="content"
                         placeholder="Add a respectful comment..."
                         className="flex-1 px-4 py-2.5 text-sm rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        required
                       />
                       <button
-                        type="button"
-                        className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center gap-1.5"
+                        type="submit"
+                        disabled={isPendingComment}
+                        className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        <FiMessageSquare className="w-4 h-4" />
-                        <span>Reply</span>
+                        <FiSend className="w-4 h-4" />
+                        <span>{isPendingComment ? 'Sending...' : 'Reply'}</span>
                       </button>
                     </form>
                   </div>

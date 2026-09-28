@@ -204,7 +204,6 @@ export async function addCommentToReview(reviewId: string, content: string, auth
   return { success: true, data: comment };
 }
 
-// Add this to your existing app/actions.ts file
 
 export async function searchCompanies(query: string) {
   if (!query || query.length < 2) return [];
@@ -218,4 +217,85 @@ export async function searchCompanies(query: string) {
   
   if (error) return [];
   return data || [];
+}
+
+
+export async function submitComment(formData: FormData, reviewId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const content = formData.get('content') as string;
+  const author_title = (formData.get('author_title') as string) || (user?.user_metadata?.full_name || 'Anonymous');
+
+  if (!content?.trim()) return { error: 'Comment cannot be empty.' };
+
+  const { data: comment, error } = await supabase
+    .from('comments')
+    .insert({
+      review_id: reviewId,
+      user_id: user?.id || null,
+      author_title,
+      content,
+      upvotes: 0,
+    })
+    .select()
+    .single();
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/company/[slug]`, 'page');
+  return { success: true, data: comment };
+}
+
+export async function submitVote(reviewId: string, type: 'upvote' | 'downvote') {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // Enforce authentication for voting (optional but recommended)
+  if (!user) {
+    return { error: 'You must be signed in to vote.' };
+  }
+
+  // 1. Fetch current vote counts
+  const { data: review, error: fetchError } = await supabase
+    .from('reviews')
+    .select('upvotes, downvotes')
+    .eq('id', reviewId)
+    .single(); 
+
+  if (fetchError || !review) {
+    return { error: 'Review not found.' };
+  }
+
+  // 2. Calculate new counts safely
+  let newUpvotes = review.upvotes || 0;
+  let newDownvotes = review.downvotes || 0;
+
+  if (type === 'upvote') {
+    newUpvotes += 1;
+  } else if (type === 'downvote') {
+    newDownvotes += 1;
+  }
+
+  // 3. Update the database
+  const { error: updateError } = await supabase
+    .from('reviews')
+    .update({ 
+      upvotes: newUpvotes, 
+      downvotes: newDownvotes 
+    })
+    .eq('id', reviewId);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  // 4. Revalidate the company page so the new counts reflect everywhere
+  revalidatePath(`/company/[slug]`, 'page');
+
+  return { 
+    success: true, 
+    upvotes: newUpvotes, 
+    downvotes: newDownvotes 
+  };
 }

@@ -12,7 +12,6 @@ async function getCompanyData(slug: string) {
     .eq('slug', slug)
     .single();
 
-  // If not found in DB, trigger 404 immediately
   if (companyError || !company) {
     notFound();
   }
@@ -25,10 +24,11 @@ async function getCompanyData(slug: string) {
     .order('created_at', { ascending: false });
 
   // 3. Fetch Inquiries (with nested replies)
+  // Using ilike for more flexible matching of the company name
   const { data: inquiries } = await supabase
     .from('inquiries')
     .select('*, inquiry_replies(*)')
-    .eq('company_name', company.name)
+    .ilike('company_name', `%${company.name}%`)
     .order('created_at', { ascending: false });
 
   return {
