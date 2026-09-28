@@ -96,13 +96,12 @@ export async function addInquiryReply(inquiryId: string, content: string, author
 
   if (!content.trim()) return { error: 'Reply cannot be empty.' };
 
-  // 1. Insert the reply
   const { data: reply, error: replyError } = await supabase
     .from('inquiry_replies')
     .insert({
       inquiry_id: inquiryId,
       content,
-      author_title: authorTitle || (user?.user_metadata?.full_name || 'Anonymous'),
+      author_title: authorTitle, // <-- Saves the dynamic title
       user_id: user?.id || null,
     })
     .select()
@@ -110,18 +109,97 @@ export async function addInquiryReply(inquiryId: string, content: string, author
 
   if (replyError) return { error: replyError.message };
 
-  // 2. Increment the replies_count on the parent inquiry
-  await supabase
+  const { data: currentInquiry } = await supabase
     .from('inquiries')
-    .update({ replies_count: supabase.rpc('increment_replies_count', { row_id: inquiryId }) }) // Or just use a raw update if RPC isn't set up
-    // Simpler fallback for replies_count:
-    .eq('id', inquiryId)
     .select('replies_count')
-    .single()
-    .then(({ data }) => {
-       if(data) supabase.from('inquiries').update({ replies_count: (data.replies_count || 0) + 1 }).eq('id', inquiryId);
-    });
+    .eq('id', inquiryId)
+    .single();
+    
+  const newCount = (currentInquiry?.replies_count || 0) + 1;
+  await supabase.from('inquiries').update({ replies_count: newCount }).eq('id', inquiryId);
 
   revalidatePath('/');
   return { success: true, data: reply };
+}
+
+
+// Add these to your existing app/actions.ts file
+
+export async function createReview(formData: FormData, companyId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const isAnonymous = formData.get('is_anonymous') === 'true';
+  const authorTitle = formData.get('author_title') as string || 'Anonymous User';
+  const rating = Number(formData.get('rating'));
+  const pros = formData.get('pros') as string;
+  const cons = formData.get('cons') as string;
+  const comment = formData.get('comment') as string;
+  const salaryAmount = formData.get('salary_amount') ? Number(formData.get('salary_amount')) : null;
+  const imageUrl = formData.get('image_url') as string || null;
+
+  if (!comment?.trim() || !rating) return { error: 'Rating and comment are required.' };
+
+  // 1. Insert the review
+  const { data: review, error: reviewError } = await supabase
+    .from('reviews')
+    .insert({
+      company_id: companyId,
+      user_id: user?.id || null,
+      is_anonymous: isAnonymous,
+      author_title: isAnonymous ? 'Anonymous Insider' : authorTitle,
+      rating,
+      pros,
+      cons,
+      comment,
+      salary_amount: salaryAmount,
+      image_url: imageUrl,
+      upvotes: 0,
+      downvotes: 0,
+    })
+    .select()
+    .single();
+
+  if (reviewError) return { error: reviewError.message };
+
+  // 2. Increment the company's review_count
+  const { data: companyData } = await supabase
+    .from('companies')
+    .select('review_count')
+    .eq('id', companyId)
+    .single();
+
+  if (companyData) {
+    await supabase
+      .from('companies')
+      .update({ review_count: (companyData.review_count || 0) + 1 })
+      .eq('id', companyId);
+  }
+
+  revalidatePath(`/company/${companyId}`); // Revalidate the company page
+  return { success: true, data: review };
+}
+
+export async function addCommentToReview(reviewId: string, content: string, authorTitle: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!content.trim()) return { error: 'Comment cannot be empty.' };
+
+  const { data: comment, error: commentError } = await supabase
+    .from('comments')
+    .insert({
+      review_id: reviewId,
+      user_id: user?.id || null,
+      author_title: authorTitle,
+      content,
+      upvotes: 0,
+    })
+    .select()
+    .single();
+
+  if (commentError) return { error: commentError.message };
+
+  revalidatePath('/');
+  return { success: true, data: comment };
 }

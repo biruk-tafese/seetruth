@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { INITIAL_INQUIRIES } from '@/data/seedCompanies';
 import { Inquiry, InquiryReply } from '@/types';
-import { FiMessageSquare, FiPlus, FiChevronDown, FiChevronUp, FiSend, FiUser } from 'react-icons/fi';
+import { FiMessageSquare, FiPlus, FiChevronDown, FiChevronUp, FiSend, FiUser, FiAlertTriangle } from 'react-icons/fi';
 import AskQuestionModal from '@/components/AskQuestionModal';
 import { addInquiryReply } from '@/app/actions';
 
@@ -20,17 +20,22 @@ export default function InquiryBoard() {
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
   const supabase = createClient();
+  const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
   // Fetch inquiries from database on mount
-// Inside the useEffect in components/InquiryBoard.tsx:
   useEffect(() => {
     const fetchInquiries = async () => {
+      if (isDemoMode) {
+        setInquiries(INITIAL_INQUIRIES);
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('inquiries')
         .select('*, inquiry_replies(*)')
         .order('created_at', { ascending: false });
 
-      // PURE DATABASE: Only set data if it exists. Otherwise, leave as empty array.
       if (data && data.length > 0) {
         setInquiries(data);
       } else {
@@ -39,7 +44,7 @@ export default function InquiryBoard() {
       setIsLoading(false);
     };
     fetchInquiries();
-  }, []);
+  }, [isDemoMode]);
 
   const handleAskSuccess = (newInquiry: Inquiry) => {
     setInquiries([newInquiry, ...inquiries]);
@@ -57,11 +62,15 @@ export default function InquiryBoard() {
 
     setIsSubmittingReply(true);
 
-    // Optimistic UI update
+    // 1. Check anonymous preference from localStorage (set by the Header toggle)
+    const isAnonymous = typeof window !== 'undefined' && localStorage.getItem('seetruth_anonymous_pref') === 'true';
+    const authorTitle = isAnonymous ? 'Anonymous Insider' : 'Verified Insider';
+
+    // 2. Optimistic UI update
     const tempReply: InquiryReply = {
       id: `temp-${Date.now()}`,
       inquiry_id: inquiryId,
-      author_title: 'You (Pending)',
+      author_title: authorTitle,
       content: replyText,
       created_at: new Date().toISOString(),
     };
@@ -72,8 +81,8 @@ export default function InquiryBoard() {
         : inq
     ));
 
-    // Call Server Action
-    const result = await addInquiryReply(inquiryId, replyText, 'Verified User');
+    // 3. Call Server Action
+    const result = await addInquiryReply(inquiryId, replyText, authorTitle);
     
     if (result.success && result.data) {
       // Replace temp reply with real DB data
@@ -193,7 +202,16 @@ export default function InquiryBoard() {
 
                     {/* Reply Input Form */}
                     {replyingTo === inquiry.id ? (
-                      <form onSubmit={(e) => handleReplySubmit(e, inquiry.id)} className="space-y-2">
+                      <form onSubmit={(e) => handleReplySubmit(e, inquiry.id)} className="space-y-3">
+                        
+                        {/* Permanent Reply Warning */}
+                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-start gap-2">
+                          <FiAlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                            Replies are permanent and cannot be deleted. Please be respectful and careful with what you say.
+                          </p>
+                        </div>
+
                         <textarea
                           value={replyText}
                           onChange={(e) => setReplyText(e.target.value)}
